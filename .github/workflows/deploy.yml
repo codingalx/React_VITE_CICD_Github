@@ -67,9 +67,9 @@ jobs:
           publish_dir: ./dist
           force_orphan: true
           keep_files: false
-     # 👇 ADD THIS NEW JOB AT THE SAME LEVEL AS 'docker' AND 'deploy'
+
   deploy-to-server:
-    needs: docker  # Waits for docker job to complete
+    needs: docker
     runs-on: ubuntu-latest
     steps:
       - name: Install SSH Key
@@ -85,6 +85,4 @@ jobs:
               "docker pull aman694/ci-cid-react:latest && \
                docker stop react-app || true && \
                docker rm react-app || true && \
-               docker run -d --name react-app -p 80:80 -p 443:443 \
-               -v /path/to/ssl/certs:/etc/nginx/ssl \
-               aman694/ci-cid-react:latest"
+               docker run -d --name react-app -p 80:80 aman694/ci-cid-react:latest"
