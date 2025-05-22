@@ -1,25 +1,46 @@
-name: Deploy React + Vite to Github Pages
+name: Build, Push Docker & Deploy
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  build-deploy:
+  docker:
     runs-on: ubuntu-latest
-    permissions:  # 👈 Fixes 403 error
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}  # Your Docker Hub username (aman694)
+          password: ${{ secrets.DOCKERHUB_TOKEN }}     # Docker Hub PAT (Classic)
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            aman694/ci-cid-react:latest
+            aman694/ci-cid-react:${{ github.sha }}
+
+  deploy:
+    needs: docker
+    runs-on: ubuntu-latest
+    permissions:
       contents: write
       pages: write
       id-token: write
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
@@ -33,6 +54,5 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: dist  # Vite's default output folder
-          # Optional: Force push to avoid history conflicts
+          publish_dir: dist
           force_orphan: true
