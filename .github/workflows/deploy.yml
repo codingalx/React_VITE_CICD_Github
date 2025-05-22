@@ -5,11 +5,6 @@ on:
   push:
     branches: [main]
 
-env:
-  SSH_PORT: 5019
-  CONTAINER_NAME: react-app
-  DOCKER_IMAGE: aman694/ci-cid-react
-
 jobs:
   docker:
     runs-on: ubuntu-latest
@@ -23,8 +18,6 @@ jobs:
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          install: true
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -38,12 +31,10 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.DOCKER_IMAGE }}:latest
-            ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+            aman694/ci-cid-react:latest
+            aman694/ci-cid-react:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          labels: |
-            org.opencontainers.image.source=${{ github.repository_url }}
 
   deploy:
     needs: docker
@@ -80,43 +71,18 @@ jobs:
   deploy-to-server:
     needs: docker
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
-      - name: Verify Network Connectivity
-        run: |
-          ping -c 3 ${{ secrets.SSH_HOST }} || echo "Ping failed"
-          nc -zv -w 5 ${{ secrets.SSH_HOST }} ${{ env.SSH_PORT }} || echo "Port test failed"
-
-      - name: Setup SSH
+      - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
-          config: |
-            Host deploy-target
-              HostName ${{ secrets.SSH_HOST }}
-              User ${{ secrets.SSH_USER }}
-              Port ${{ env.SSH_PORT }}
-              StrictHostKeyChecking no
-              ConnectTimeout 30
-              ServerAliveInterval 60
 
       - name: Deploy to Server
         run: |
-          ssh deploy-target \
-            "docker pull ${{ env.DOCKER_IMAGE }}:latest && \
-             docker stop ${{ env.CONTAINER_NAME }} || true && \
-             docker rm ${{ env.CONTAINER_NAME }} || true && \
-             docker run -d \
-               --name ${{ env.CONTAINER_NAME }} \
-               -p ${{ env.SSH_PORT }}:${{ env.SSH_PORT }} \
-               -e NODE_ENV=production \
-               --restart unless-stopped \
-               ${{ env.DOCKER_IMAGE }}:latest"
-        timeout-minutes: 5
-
-      - name: Verify Deployment
-        run: |
-          curl -sSf --retry 3 --retry-delay 5 \
-            http://${{ secrets.SSH_HOST }}:${{ env.SSH_PORT }} || \
-            echo "Deployment verification failed"
+           ssh -o StrictHostKeyChecking=no -p 3001 \
+              ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+              "docker pull aman694/ci-cid-react:latest && \
+               docker stop react-app || true && \
+               docker rm react-app || true && \
+               docker run -d --name react-app -p 3001:3001 aman694/ci-cid-react:latest"
