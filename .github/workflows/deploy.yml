@@ -25,14 +25,22 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: aman694/ci-cid-react
+          tags: |
+            type=sha
+            type=ref,event=branch
+
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
-          tags: |
-            aman694/ci-cid-react:latest
-            aman694/ci-cid-react:${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -60,6 +68,11 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: Test built files
+        run: |
+          ls -la ./dist
+          [ -f ./dist/index.html ] || exit 1
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
@@ -78,11 +91,22 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
 
+      - name: Verify SSH Connection
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || '22' }} \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "echo 'SSH connection successful'"
+
       - name: Deploy to Server
         run: |
-           ssh -o StrictHostKeyChecking=no -p 3001 \
-              ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-              "docker pull aman694/ci-cid-react:latest && \
-               docker stop react-app || true && \
-               docker rm react-app || true && \
-               docker run -d --name react-app -p 3001:3001 aman694/ci-cid-react:latest"
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || '22' }} \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "docker pull aman694/ci-cid-react:latest && \
+             (docker stop react-app || true) && \
+             (docker rm react-app || true) && \
+             docker run -d \
+               --name react-app \
+               -p 3000:80 \
+               --restart unless-stopped \
+               -e NODE_ENV=production \
+               aman694/ci-cid-react:latest"
