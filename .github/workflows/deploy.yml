@@ -85,4 +85,4 @@ jobs:
               "docker pull aman694/ci-cid-react:latest && \
                docker stop react-app || true && \
                docker rm react-app || true && \
-               docker run -d --name react-app -p 80:80 aman694/ci-cid-react:latest"
+               docker run -d --name react-app -p 5019:5019 aman694/ci-cid-react:latest"
