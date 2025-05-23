@@ -80,33 +80,34 @@ jobs:
           publish_dir: ./dist
           force_orphan: true
           keep_files: false
+          
 
-  deploy-to-server:
-    needs: docker
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install SSH Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+  # deploy-to-server:
+  #   needs: docker
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Install SSH Key
+  #       uses: shimataro/ssh-key-action@v2
+  #       with:
+  #         key: ${{ secrets.SSH_PRIVATE_KEY }}
+  #         known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
 
-      - name: Verify SSH Connection
-        run: |
-          ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || '22' }} \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "echo 'SSH connection successful'"
+  #     - name: Verify SSH Connection
+  #       run: |
+  #         ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || '22' }} \
+  #           ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+  #           "echo 'SSH connection successful'"
 
-      - name: Deploy to Server
-        run: |
-          ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || '22' }} \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "docker pull aman694/ci-cid-react:latest && \
-             (docker stop react-app || true) && \
-             (docker rm react-app || true) && \
-             docker run -d \
-               --name react-app \
-               -p 3000:80 \
-               --restart unless-stopped \
-               -e NODE_ENV=production \
-               aman694/ci-cid-react:latest"
+  #     - name: Deploy to Server
+  #       run: |
+  #         ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT || '22' }} \
+  #           ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+  #           "docker pull aman694/ci-cid-react:latest && \
+  #            (docker stop react-app || true) && \
+  #            (docker rm react-app || true) && \
+  #            docker run -d \
+  #              --name react-app \
+  #              -p 3000:80 \
+  #              --restart unless-stopped \
+  #              -e NODE_ENV=production \
+  #              aman694/ci-cid-react:latest"
